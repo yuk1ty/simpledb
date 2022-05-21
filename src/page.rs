@@ -22,8 +22,7 @@ impl Page {
 
     pub fn get_int(&self, offset: usize) -> i32 {
         let freezed = self.bb.clone().freeze();
-        // TODO
-        let mut rdr = Cursor::new(freezed.slice(offset..(offset + size_of::<i32>())).to_vec());
+        let mut rdr = Cursor::new(freezed.slice(offset..).to_vec());
         rdr.read_i32::<BigEndian>().unwrap()
     }
 
@@ -45,7 +44,9 @@ impl Page {
 
     pub fn get_bytes(&mut self, offset: usize) -> Option<&[u8]> {
         let length = self.get_int(offset) as usize;
-        let bytes = self.bb.get(offset..(offset + length));
+        // considering 4 byte header which is set while processing `set_bytes` function
+        let baseline = offset + size_of::<i32>();
+        let bytes = self.bb.get(baseline..(baseline + length));
         bytes
     }
 
@@ -65,24 +66,32 @@ impl Page {
         self.set_bytes(offset, b);
     }
 
-    pub(crate) fn contents(&mut self) -> Bytes {
-        let bb = std::mem::take(&mut self.bb);
-        bb.freeze()
+    pub(crate) fn contents(self) -> Bytes {
+        // TODO might not correct
+        self.bb.freeze()
     }
+}
+
+pub fn max_length(strlen: usize) -> usize {
+    size_of::<u32>() + strlen * size_of::<char>()
 }
 
 #[cfg(test)]
 mod test {
-    use crate::block_id::BlockId;
-
-    use super::Page;
+    use super::{max_length, Page};
 
     #[test]
-    fn test_write() {
-        let block = BlockId::new("testfile", 2);
+    fn test_string_write() {
         let mut p1 = Page::with_capacity(400);
         let pos1: usize = 88;
         p1.set_string(pos1, "abcdefghijklm");
-        println!("{}", p1.get_string(pos1).unwrap());
+        assert_eq!(p1.get_string(pos1).unwrap(), "abcdefghijklm".to_string());
+    }
+
+    #[test]
+    fn test_max_length() {
+        let text = "abcdefghijklm".len();
+        let max_length = max_length(text);
+        assert_eq!(max_length, 56);
     }
 }

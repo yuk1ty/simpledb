@@ -34,6 +34,7 @@ class FileMgr(
         f <- getFile(blk.fileName).left
           .map(_ => RuntimeException(s"cannot read block $blk"))
       } yield {
+        // TODO: Need to move Either to catch IOException correctly
         f.seek(blk.blknum * blockSize)
         f.getChannel().read(p.contents())
       }

@@ -2,15 +2,14 @@ package io.github.yuk1ty.simpledb.file
 
 import java.io.File
 import java.io.RandomAccessFile
-import scala.concurrent.SyncVar
 import java.io.IOException
+import scala.collection.mutable
 import scala.collection.mutable.HashMap
-import scala.util.Try
 
 object FileMgr {
   def apply(dbDirectory: File, blockSize: Int): FileMgr = {
     val isNew = !dbDirectory.exists()
-    if (!isNew) {
+    if (isNew) {
       dbDirectory.mkdirs()
     }
     dbDirectory.list().foreach { filename =>
@@ -18,7 +17,7 @@ object FileMgr {
         new File(dbDirectory, filename).delete()
       }
     }
-    new FileMgr(dbDirectory, blockSize, isNew, HashMap())
+    new FileMgr(dbDirectory, blockSize, isNew, mutable.HashMap())
   }
 }
 
@@ -26,7 +25,7 @@ class FileMgr(
     private val dbDirectory: File,
     val blockSize: Int,
     val isNew: Boolean,
-    private val openFiles: HashMap[String, RandomAccessFile]
+    private val openFiles: mutable.HashMap[String, RandomAccessFile]
 ) {
   def read(blk: BlockId, p: Page): Either[RuntimeException, Unit] = {
     synchronized {

@@ -33,7 +33,7 @@ class Page(private var bb: ByteBuffer) {
     b
   }
 
-  def setBytes(offset: Int, b: Array[Byte]) = {
+  def setBytes(offset: Int, b: Array[Byte]): Unit = {
     bb.position(offset)
     bb.putInt(b.length)
     bb.put(b)
@@ -44,7 +44,7 @@ class Page(private var bb: ByteBuffer) {
     String(b, CHARSET)
   }
 
-  def setString(offset: Int, s: String) = {
+  def setString(offset: Int, s: String): Unit = {
     val b = s.getBytes(CHARSET)
     setBytes(offset, b)
   }

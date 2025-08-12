@@ -9,7 +9,7 @@ object LogMgr {
     for {
       logSize <- fm.length(logFile)
       currentblk <- if (logSize == 0) {
-        Right(appendNewBlock())
+        appendNewBlock(fm, logFile, logPage)
       } else {
         val blk = BlockId(logFile, logSize - 1)
         fm.read(blk, logPage).map(_ => blk).left.map(identity)
@@ -22,8 +22,51 @@ object LogMgr {
   }
 }
 
-private def appendNewBlock(): BlockId = ???
+private def appendNewBlock(fm: FileMgr, logFile: String, logPage: Page): Either[RuntimeException, BlockId] = {
+  for {
+    blk <- fm.append(logFile)
+    _ = logPage.setInt(0, fm.blockSize)
+    _ <- fm.write(blk, logPage)
+  } yield {
+    blk
+  }
+}
 
-class LogMgr(val fm: FileMgr, val logFile: String, val logPage: Page, val currentblk: BlockId, private var latestLSN: Int, private var lastSavedLSN: Int) {
+class LogMgr(val fm: FileMgr, val logFile: String, val logPage: Page, private var currentblk: BlockId, private var latestLSN: Int, private var lastSavedLSN: Int) {
+  def flush(lsn: Int): Either[RuntimeException, Unit] = {
+    if (lsn < 0) {
+      return Right(())
+    }
+    flush()
+  }
 
+  def flush(): Either[RuntimeException, Unit] = {
+    fm.write(currentblk, logPage)
+    lastSavedLSN = latestLSN
+    Right(())
+  }
+
+  def append(logRec: Array[Byte]): Int = synchronized {
+    val boundary = logPage.getInt(0)
+    val recSize = logRec.length
+    val bytesNeeded = recSize + Integer.BYTES
+    if (boundary - bytesNeeded < Integer.BYTES) {
+      flush()
+      appendNewBlock(fm, logFile, logPage).foreach { blk =>
+        currentblk = blk
+      }
+    }
+    val recPos = boundary - bytesNeeded
+    logPage.setBytes(recPos, logRec)
+    logPage.setInt(0, recPos)
+    latestLSN += 1
+    latestLSN
+  }
+
+  def iterator(): Either[RuntimeException, Iterator[Array[Byte]]] = {
+    for {
+      _ <- flush()
+      iter <- LogIterator(fm, currentblk)
+    } yield iter
+  }
 }

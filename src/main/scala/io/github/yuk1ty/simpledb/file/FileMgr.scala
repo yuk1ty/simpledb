@@ -49,13 +49,14 @@ class FileMgr(
           RuntimeException(s"cannot write block $blk")
         )
       } yield {
+        // TODO: Need to move Either to catch IOException correctly
         f.seek(blk.blknum * blockSize)
         f.getChannel().write(p.contents())
       }
     }
   }
 
-  def append(fileName: String): Either[RuntimeException, Unit] = {
+  def append(fileName: String): Either[RuntimeException, BlockId] = {
     for {
       // TODO: RuntimeException!?
       newBlkNum <- length(fileName)
@@ -65,8 +66,10 @@ class FileMgr(
         RuntimeException(s"cannot append block $blk")
       )
     } yield {
+      // TODO: Need to move Either to catch IOException correctly
       f.seek(blk.blknum * blockSize)
       f.write(b)
+      blk
     }
   }
 

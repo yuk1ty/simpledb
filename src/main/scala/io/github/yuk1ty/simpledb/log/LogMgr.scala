@@ -47,7 +47,7 @@ class LogMgr(val fm: FileMgr, val logFile: String, val logPage: Page, private va
   }
 
   def append(logRec: Array[Byte]): Int = synchronized {
-    val boundary = logPage.getInt(0)
+    var boundary = logPage.getInt(0)
     val recSize = logRec.length
     val bytesNeeded = recSize + Integer.BYTES
     if (boundary - bytesNeeded < Integer.BYTES) {
@@ -55,6 +55,7 @@ class LogMgr(val fm: FileMgr, val logFile: String, val logPage: Page, private va
       appendNewBlock(fm, logFile, logPage).foreach { blk =>
         currentblk = blk
       }
+      boundary = logPage.getInt(0)
     }
     val recPos = boundary - bytesNeeded
     logPage.setBytes(recPos, logRec)

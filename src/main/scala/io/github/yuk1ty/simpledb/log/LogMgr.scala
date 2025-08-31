@@ -8,12 +8,13 @@ object LogMgr {
     val logPage = Page(b)
     for {
       logSize <- fm.length(logFile)
-      currentblk <- if (logSize == 0) {
-        appendNewBlock(fm, logFile, logPage)
-      } else {
-        val blk = BlockId(logFile, logSize - 1)
-        fm.read(blk, logPage).map(_ => blk).left.map(identity)
-      }
+      currentblk <-
+        if (logSize == 0) {
+          appendNewBlock(fm, logFile, logPage)
+        } else {
+          val blk = BlockId(logFile, logSize - 1)
+          fm.read(blk, logPage).map(_ => blk).left.map(identity)
+        }
     } yield {
       val latestLSN = 0
       val lastSavedLSN = 0
@@ -22,7 +23,11 @@ object LogMgr {
   }
 }
 
-private def appendNewBlock(fm: FileMgr, logFile: String, logPage: Page): Either[RuntimeException, BlockId] = {
+private def appendNewBlock(
+    fm: FileMgr,
+    logFile: String,
+    logPage: Page
+): Either[RuntimeException, BlockId] = {
   for {
     blk <- fm.append(logFile)
     _ = logPage.setInt(0, fm.blockSize)
@@ -32,7 +37,14 @@ private def appendNewBlock(fm: FileMgr, logFile: String, logPage: Page): Either[
   }
 }
 
-class LogMgr(val fm: FileMgr, val logFile: String, val logPage: Page, private var currentblk: BlockId, private var latestLSN: Int, private var lastSavedLSN: Int) {
+class LogMgr(
+    val fm: FileMgr,
+    val logFile: String,
+    val logPage: Page,
+    private var currentblk: BlockId,
+    private var latestLSN: Int,
+    private var lastSavedLSN: Int
+) {
   def flush(lsn: Int): Either[RuntimeException, Unit] = {
     if (lsn < 0) {
       return Right(())
@@ -71,3 +83,4 @@ class LogMgr(val fm: FileMgr, val logFile: String, val logPage: Page, private va
     } yield iter
   }
 }
+
